@@ -1,0 +1,23 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:13.3
+    restart: always
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: user_wav
+      POSTGRES_PASSWORD: password_wav1206
+      POSTGRES_DB: database_audio
+
+  server:
+     build: server/
+     command: python ./main.py
+     ports:
+       - "127.0.0.1:8000:8000"
+     volumes:
+       - ./server/audio:/var/lib/audio
+     depends_on:
+       - db
