@@ -10,7 +10,6 @@ import pathlib
 
 def user_add(user_name: str, db) -> dict | None:
     user = get_user(user_name, db)
-    print(user)
     if not user:
         user_id: str = str(uuid4())
         token: str = generate_token(user_name, user_id)
@@ -27,18 +26,13 @@ def generate_token(user_name: str, user_id: str) -> str:
 def check_user(db, request_user: dict, audio_file: UploadFile = File(...)) -> str | None:
     id_user: str = request_user['user_id']
     token_user: dict | None = get_id(db, id_user)
-    if token_user:
-        if request_user['token'] == token_user['token']:
-            record_id = convert_to_mp3(audio_file, db)
-            if record_id:
-                download_url: str = f"http://{HOST}:{PORT}/record?id={record_id}&user={id_user}"
-                return download_url
-            else:
-                return None
-        else:
-            return 'Token is invalid'
-    else:
+    if not token_user:
         return 'User ID is invalid'
+    elif request_user['token'] != token_user['token']:
+        return 'Token is invalid'
+    else:
+        record_id = convert_to_mp3(audio_file, db)
+        return f"http://{HOST}:{PORT}/record?id={record_id}&user={id_user}" if record_id else None
 
 
 def convert_to_mp3(audio_file, db) -> str | None:
