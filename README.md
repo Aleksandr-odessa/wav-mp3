@@ -1,15 +1,7 @@
-# Проект Wav to Mp3
+# Проект "Викторина"
+Проект представляет собой сервис POST REST метод, принимающий на вход запросы с содержимым вида {"questions_num": integer}. После получения запроса сервис, в свою очередь, запрашивает с публичного API (англоязычные вопросы для викторин) https://jservice.io/api/random?count=1 указанное в полученном запросе количество вопросов. Полученные ответы сохраняться в базе данных PostgreSQL (развернутой из docker образа).В случае, если в БД имеется такой же вопрос, к публичному API с викторинами  выполняються дополнительные запросы до тех пор, пока не будет получен уникальный вопрос для викторины. Ответом на запрос  является предыдущей сохранённый вопрос для викторины. В случае его отсутствия - пустой объект.
 
-Проект представляет собой веб-сервис, выполняющий следующие функции:
-    1. Создание пользователя;
-    2. Для каждого пользователя - сохранение аудиозаписи в формате wav, преобразование её в формат mp3 и запись в базу данных и предоставление ссылки для скачивания аудиозаписи.
-
-Сервис принимает на вход запросы с именем пользователя, создаёт в базе данных, пользователя заданным именем, так же генерирует уникальный идентификатор пользователя и UUID токен доступа (в виде строки) для данного пользователя и возвращает сгенерированные идентификатор пользователя и токен.
-В случае если пользователь новый (в бд его не было) будет отправлен  код 201("Создано") и json с id пользователя token доступ.  В случае если пользователь с таким именем уже существует будет отправлен код 200 ("ОК") и сообщение {"error_name": "user with name already is"}
-
-Для добавление аудиозаписи, сервис принимает на вход запросы, содержащие уникальный идентификатор пользователя, токен доступа и аудиозапись в формате wav ( при этом происходит проверка на правльный идентификатор пользователя, токен доступа и уникальность отсутствие файла  стаким названием в БД, преобразует аудиозапись в формат mp3, генерирует для неё уникальный UUID идентификатор и сохраняет их в базе данных.
-Результатом работы сервиса является ссылка вида http://host:port/record?id=id_записи&user=id_пользователя на скачивание файла в сормате мр3
-
+Проект выполнен на языке Python v.3.10.6 и фреймворка FastAPI.
 
 Проект можно собрать с помощью docker compose. 
 Для этого необходимо:
@@ -19,28 +11,40 @@
 4. Собрать образ - docker-compose build
 5. Запустить контейнеры командой -docker-compose up
 
+Пример CURL POST запроса:
+Request URL
+http://0.0.0.0:8000/users
 
-Примеры запросов:
+curl -X 'POST' \
+  'http://0.0.0.0:8000/users' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "name"
+}'
+Ответ:
+Server response 201 
 
-```
-async def test_add_user():
-    async with httpx.AsyncClient() as client:
-        r = await client.post('http://0.0.0.0:8000/users', json={'name': 'test'})
-    return r.json() 
+Response body
+{
+  "user_id": "68f60265-1969-4e9c-900d-2b2fb02bcba2",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzb21lIjoiU2FzYSJ9.JIEtt6WkUxHbFNL4pb07ICemeLUCHaHf62l0wRshWfE"
+}
 
-print(asyncio.run(test_add_user()))
-```
 
-id = 'id user полученный в ответ на запрос 'http://0.0.0.0:8000/users', json={'name': 'test'}
-access_token = 'token полученный в ответ на запрос 'http://0.0.0.0:8000/users', json={'name': 'test'}
+Пример CURL POST запроса:
+Request URL
+http://0.0.0.0:8000/users/wav
+ 
+curl -X 'POST' \
+  'http://0.0.0.0:8000/users/wav' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'audio_file=@sample-3s.wav;type=audio/wav' \
+  -F 'data={   "user_id": "68f60265-1969-4e9c-900d-2b2fb02bcba2",   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzb21lIjoiU2FzYSJ9.JIEtt6WkUxHbFNL4pb07ICemeLUCHaHf62l0wRshWfE" }'
 
-file_path = путь расположения файла
-```
-def upload_audio(id, access_token, file_path):
-    url = "http://0.0.0.0:8000/users/wav"
-    files = {"audio_file": open(file_path, "rb")}
-    data = {"data": json.dumps({"user_id": id, "access_token": access_token})}
-    response = httpx.post(url, data=data, files=files)
-    return response.text
-```
-print(upload_audio(id, access_token, file_path))
+Ответ:
+Server response 201 
+
+Response body
+"http://0.0.0.0:8000/record?id=2859c7f4-5610-48d2-9d0b-3c66a31ad7bb&user=68f60265-1969-4e9c-900d-2b2fb02bcba2"
